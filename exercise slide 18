@@ -1,0 +1,85 @@
+# Exercise 1 Slide 18
+
+# 1
+pretty_print() {
+    printf '\n%s\n\n' "$1"
+}
+
+# print an error message and stop the script
+fail() {
+    printf '\nERROR: %s\n' "$1" >&2
+    exit 1
+}
+
+main() {
+    pretty_print "Starting environment setup"
+
+    # Feature 2: detect the operating system with OSTYPE
+    case "$OSTYPE" in
+        darwin*) OS="macos" ;;
+        linux*)  OS="linux" ;;
+        *)       fail "Unsupported operating system: $OSTYPE" ;;
+    esac
+    pretty_print "Detected operating system: $OS"
+
+    # 2
+    if [ "$OS" = "macos" ]; then
+        command -v brew >/dev/null 2>&1 || fail "Install Homebrew from https://brew.sh first."
+    else
+        command -v apt-get >/dev/null 2>&1 || fail "Linux support requires Debian/Ubuntu with apt-get."
+    fi
+
+    # 3
+    if command -v python3 >/dev/null 2>&1; then
+        pretty_print "Python 3 is already installed:"
+    else
+        pretty_print "Installing Python 3..."
+        if [ "$OS" = "macos" ]; then
+            brew install python || fail "Python installation failed."
+        else
+            sudo apt-get update || fail "Could not refresh package lists."
+            sudo apt-get install -y python3 || fail "Python installation failed."
+        fi
+    fi
+    python3 --version || fail "Python 3 could not run."
+
+    # 4
+    pretty_print "Checking pip..."
+    if ! python3 -m pip --version; then
+        if [ "$OS" = "linux" ]; then
+            sudo apt-get install -y python3-pip || fail "pip installation failed."
+            python3 -m pip --version || fail "pip is still unavailable."
+        else
+            fail "pip is unavailable. Repair the Python installation first."
+        fi
+    fi
+
+    # 5
+    pretty_print "Installing Jupyter Notebook..."
+    if [ "$OS" = "macos" ]; then
+        brew install jupyter || fail "Jupyter installation failed."
+    else
+        sudo apt-get install -y jupyter-notebook || fail "Jupyter installation failed."
+    fi
+    jupyter notebook --version || fail "Jupyter verification failed."
+
+    # 6
+    BREW_WARNINGS=0
+    if [ "$OS" = "macos" ]; then
+        pretty_print "Checking Homebrew health..."
+        if brew doctor; then
+            pretty_print "Homebrew health check passed."
+        else
+            BREW_WARNINGS=1
+            pretty_print "WARNING: Homebrew reported issues. Review the output above."
+        fi
+    fi
+
+    pretty_print "Python and Jupyter Notebook setup completed."
+    if [ "$BREW_WARNINGS" -eq 1 ]; then
+        pretty_print "Homebrew issues still need review before the checklist is complete."
+    fi
+    printf 'Launch Notebook with:\njupyter notebook\n'
+}
+
+main "$@"
